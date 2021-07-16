@@ -7,7 +7,7 @@
 #include <string>
 #include <list>
 
-
+//Avito test
 template <typename InIt, typename OutIt, typename F>
 InIt split(InIt it, InIt end_it, OutIt out_it,
     F bin_func)
