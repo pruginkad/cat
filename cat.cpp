@@ -7,9 +7,14 @@
 #include <string>
 #include <list>
 
+auto binfunc_string_maker([](auto it_a, auto it_b)
+    {
+        return std::string(it_a, it_b);
+    });
+
 //Avito test
-template <typename InIt, typename OutIt, typename F>
-InIt split(InIt it, InIt end_it, OutIt out_it, F bin_func)
+template <typename InIt>
+InIt split(InIt it, InIt end_it, std::map<std::string, std::size_t>& words)
 {
     while (it != end_it) 
     {
@@ -25,7 +30,13 @@ InIt split(InIt it, InIt end_it, OutIt out_it, F bin_func)
                     
             }));
 
-        *out_it++ = bin_func(it, slice_end);
+        std::string cur_word = binfunc_string_maker(it, slice_end);
+        
+        if (!cur_word.empty())
+        {
+            ++words[cur_word];
+        }        
+
         if (slice_end == end_it) 
         { 
             return end_it; 
@@ -45,6 +56,7 @@ int main(int argc, char* argv[])
     }
     std::ifstream in;
     in.open(argv[1]);
+
     if (!in.is_open())
     { 
         std::cerr << "bad file: " << argv[1] << std::endl;
@@ -68,24 +80,12 @@ int main(int argc, char* argv[])
     std::streambuf* cinbuf = std::cin.rdbuf(); //save old buf
     std::cin.rdbuf(in.rdbuf()); //redirect std::cin to in.txt!
 
-    auto binfunc_string_maker([](auto it_a, auto it_b)
-        {
-            return std::string(it_a, it_b);
-        });
+
 
     std::string s;
     while (std::cin >> s)
     {
-        std::list<std::string> word_list;
-        split(begin(s), end(s), std::back_inserter(word_list), binfunc_string_maker);
-
-        std::for_each(word_list.begin(), word_list.end(), [&](auto& cur_word)
-        { 
-                if (!cur_word.empty())
-                {
-                    ++words[cur_word];
-                }                
-        });
+        split(begin(s), end(s), words);
     }
 
     std::vector<std::pair<std::string, std::size_t>> word_counts;
