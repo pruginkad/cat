@@ -9,16 +9,20 @@
 
 //Avito test
 template <typename InIt, typename OutIt, typename F>
-InIt split(InIt it, InIt end_it, OutIt out_it,
-    F bin_func)
+InIt split(InIt it, InIt end_it, OutIt out_it, F bin_func)
 {
     while (it != end_it) 
     {
         auto slice_end(std::find_if_not(it, end_it,
-            [](const auto& item) 
+            [](auto& item) 
             {
-                bool bRet = (item >= 'a' && item <= 'z') || (item >= 'A' && item <= 'Z');
-                return bRet;
+                if (item >= 'A' && item <= 'Z')
+                {
+                    item = std::tolower(item);
+                    return true;
+                }
+                return (item >= 'a' && item <= 'z');
+                    
             }));
 
         *out_it++ = bin_func(it, slice_end);
@@ -60,7 +64,6 @@ int main(int argc, char* argv[])
     }
 
     std::map<std::string, std::size_t> words;
-    int max_word_len{ 0 };
 
     std::streambuf* cinbuf = std::cin.rdbuf(); //save old buf
     std::cin.rdbuf(in.rdbuf()); //redirect std::cin to in.txt!
@@ -80,12 +83,6 @@ int main(int argc, char* argv[])
         { 
                 if (!cur_word.empty())
                 {
-                    std::transform(cur_word.begin(), cur_word.end(), cur_word.begin(),
-                        [](unsigned char c)
-                        {
-                            return std::tolower(c);
-                        });
-                    max_word_len = std::max<int>(max_word_len, cur_word.length());
                     ++words[cur_word];
                 }                
         });
@@ -106,7 +103,7 @@ int main(int argc, char* argv[])
     
     for (const auto& elem : word_counts) 
     {
-        std::cout << elem.second << " " << std::setw((std::streamsize)(max_word_len + 2)) << elem.first << '\n';
+        std::cout << elem.second << " " << elem.first << '\n';
     }
 }
 
