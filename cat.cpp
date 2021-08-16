@@ -7,10 +7,6 @@
 #include <string>
 #include <list>
 
-auto binfunc_string_maker([](auto it_a, auto it_b)
-    {
-        return std::string(it_a, it_b);
-    });
 
 //Avito test
 template <typename InIt>
@@ -30,12 +26,16 @@ InIt split(InIt it, InIt end_it, std::map<std::string, std::size_t>& words)
                     
             }));
 
-        std::string cur_word = binfunc_string_maker(it, slice_end);
-        
-        if (!cur_word.empty())
+        if (it != slice_end)
         {
-            ++words[cur_word];
-        }        
+            std::string cur_word(it, slice_end);
+
+            //if (!cur_word.empty())
+            {
+                ++words[cur_word];
+            }
+        }
+        
 
         if (slice_end == end_it) 
         { 
