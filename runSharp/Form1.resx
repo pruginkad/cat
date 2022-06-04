@@ -189,10 +189,6 @@
   <data name="menuStrip1.Location" type="System.Drawing.Point, System.Drawing">
     <value>0, 0</value>
   </data>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="menuStrip1.Padding" type="System.Windows.Forms.Padding, System.Windows.Forms">
-    <value>8, 2, 0, 2</value>
-  </data>
   <data name="menuStrip1.Size" type="System.Drawing.Size, System.Drawing">
     <value>744, 28</value>
   </data>
@@ -212,7 +208,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;menuStrip1.ZOrder" xml:space="preserve">
-    <value>6</value>
+    <value>7</value>
   </data>
   <data name="textBoxMailer.Location" type="System.Drawing.Point, System.Drawing">
     <value>78, 38</value>
@@ -236,7 +232,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;textBoxMailer.ZOrder" xml:space="preserve">
-    <value>5</value>
+    <value>6</value>
   </data>
   <data name="label1.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
@@ -263,7 +259,7 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;label1.ZOrder" xml:space="preserve">
-    <value>4</value>
+    <value>5</value>
   </data>
   <data name="textBoxMail.Location" type="System.Drawing.Point, System.Drawing">
     <value>78, 293</value>
@@ -287,11 +283,12 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;textBoxMail.ZOrder" xml:space="preserve">
-    <value>3</value>
+    <value>4</value>
   </data>
   <data name="label2.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
+  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="label2.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
@@ -317,13 +314,13 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;label2.ZOrder" xml:space="preserve">
-    <value>2</value>
+    <value>3</value>
   </data>
   <data name="buttonSend.Location" type="System.Drawing.Point, System.Drawing">
     <value>470, 48</value>
   </data>
   <data name="buttonSend.Size" type="System.Drawing.Size, System.Drawing">
-    <value>234, 38</value>
+    <value>107, 38</value>
   </data>
   <data name="buttonSend.TabIndex" type="System.Int32, mscorlib">
     <value>6</value>
@@ -341,13 +338,13 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;buttonSend.ZOrder" xml:space="preserve">
-    <value>1</value>
+    <value>2</value>
   </data>
   <data name="columnHeaderAddr.Text" xml:space="preserve">
     <value>address</value>
   </data>
   <data name="columnHeaderAddr.Width" type="System.Int32, mscorlib">
-    <value>180</value>
+    <value>150</value>
   </data>
   <data name="columnHeaderStat.Text" xml:space="preserve">
     <value>Status</value>
@@ -371,6 +368,30 @@
     <value>$this</value>
   </data>
   <data name="&gt;&gt;listViewStat.ZOrder" xml:space="preserve">
+    <value>1</value>
+  </data>
+  <data name="buttonStop.Location" type="System.Drawing.Point, System.Drawing">
+    <value>598, 48</value>
+  </data>
+  <data name="buttonStop.Size" type="System.Drawing.Size, System.Drawing">
+    <value>98, 38</value>
+  </data>
+  <data name="buttonStop.TabIndex" type="System.Int32, mscorlib">
+    <value>8</value>
+  </data>
+  <data name="buttonStop.Text" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="&gt;&gt;buttonStop.Name" xml:space="preserve">
+    <value>buttonStop</value>
+  </data>
+  <data name="&gt;&gt;buttonStop.Type" xml:space="preserve">
+    <value>System.Windows.Forms.Button, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="&gt;&gt;buttonStop.Parent" xml:space="preserve">
+    <value>$this</value>
+  </data>
+  <data name="&gt;&gt;buttonStop.ZOrder" xml:space="preserve">
     <value>0</value>
   </data>
   <metadata name="$this.Localizable" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">

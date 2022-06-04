@@ -13,6 +13,8 @@ using System.Net.Security;
 using Properties;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Mms
 {
@@ -26,8 +28,6 @@ namespace Mms
 
     protected DebugForm m_DebugForm = new DebugForm();
 
-
-    bool m_bSendSync = false;
     private void Form1_Load(object sender, EventArgs e)
     {
       textBoxMailer.Text = Settings.Default.def_mailer;
@@ -44,10 +44,12 @@ namespace Mms
       }
     }
 
-    private void SendEMail(MsgMail msgMail, SmtpClient m_client)
+    private async Task SendEMail(MsgMail msgMail, SmtpClient m_client, CancellationToken token)
     {
       try
       {
+        await Task.Delay(10, token);
+
         // Create a message and set up the recipients.
         MailMessage message = new MailMessage(
            msgMail.from,
@@ -189,20 +191,9 @@ namespace Mms
 
         //Send the message.
 
-
-        MailMessageObject temp_msg = new MailMessageObject();
-        temp_msg.mail = message;
-        temp_msg.msg = msgMail;
-
-        if (!m_bSendSync)
-        {
-          m_client.SendAsync(message, temp_msg);
-        }
-        else
-        {
-          m_client.Send(message);
-          NotifyAboutSent(msgMail);
-        }
+        
+        await m_client.SendMailAsync(message);
+        NotifyAboutSent(msgMail);
       }
       catch (Exception ex)
       {
@@ -232,28 +223,27 @@ namespace Mms
     private void SendCompletedCallback(object sender, AsyncCompletedEventArgs e)
     {
       // Get the unique identifier for this asynchronous operation.
-      try
-      {
-        MailMessageObject msgMail = e.UserState as MailMessageObject;
-        foreach (Attachment attachment in msgMail.mail.Attachments)
-        {
-          attachment.Dispose();
-        }
+      //try
+      //{
+      //  MailMessageObject msgMail = e.UserState as MailMessageObject;
+      //  foreach (Attachment attachment in msgMail.mail.Attachments)
+      //  {
+      //    attachment.Dispose();
+      //  }
 
-        if (e.Cancelled || e.Error != null)
-        {
-          OnSendError(msgMail.msg, e.Error);
-        }
-        else
-        {
-          NotifyAboutSent(msgMail.msg);
-        }
-      }
-      catch (Exception ex)
-      {
-        MessageBox.Show(ex.Message);
-      }
-
+      //  if (e.Cancelled || e.Error != null)
+      //  {
+      //    OnSendError(msgMail.msg, e.Error);
+      //  }
+      //  else
+      //  {
+      //    NotifyAboutSent(msgMail.msg);
+      //  }
+      //}
+      //catch (Exception ex)
+      //{
+      //  MessageBox.Show(ex.Message);
+      //}
     }
 
     private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -298,8 +288,11 @@ namespace Mms
       Settings.Default.Save();
     }
 
-    private void buttonSend_Click(object sender, EventArgs e)
+    private async void buttonSend_Click(object sender, EventArgs e)
     {
+      buttonSend.Enabled = false;
+
+      _cancellToken = new CancellationTokenSource();
       listViewStat.Items.Clear();
 
       Mailer mailer = JsonConvert.DeserializeObject<Mailer>(textBoxMailer.Text);
@@ -324,14 +317,20 @@ namespace Mms
           };
 
       var addrs = GetAddressList(mail.content_path);
+      var token = _cancellToken.Token;
 
-      SendEMail(mail, m_client);
+      await SendEMail (mail, m_client, token);
 
       foreach (var addr in addrs)
       {
+        if (_cancellToken.IsCancellationRequested)
+        {
+          break;
+        }
         mail.to = addr;
-        SendEMail(mail, m_client);
-      }      
+        await SendEMail(mail, m_client, token);
+      }
+      buttonSend.Enabled = true;
     }
 
     private List<string> GetAddressList(string path)
@@ -348,7 +347,8 @@ namespace Mms
         var lines = File.ReadAllLines(currentFile);
         foreach(var line in lines)
         {
-          var parts = line.Split(',');
+          var clean_line = line.Replace("\"", string.Empty);
+          var parts = clean_line.Split(',');
           if( parts.Length < 1)
           {
             continue;
@@ -364,6 +364,13 @@ namespace Mms
       }
 
       return retList;
+    }
+
+    CancellationTokenSource _cancellToken = new CancellationTokenSource();
+    
+    private void buttonStop_Click(object sender, EventArgs e)
+    {
+      _cancellToken.Cancel();
     }
   }
 }
