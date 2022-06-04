@@ -1,0 +1,15 @@
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.run.csproj.AssemblyReference.cache
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.run.csproj.ResolveComReference.cache
+D:\TESTS\Mms\runSharp\obj\x64\Debug\Mms.DebugForm.resources
+D:\TESTS\Mms\runSharp\obj\x64\Debug\Mms.Form1.resources
+D:\TESTS\Mms\runSharp\obj\x64\Debug\Properties.Resources.resources
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.run.csproj.GenerateResource.cache
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.run.csproj.CoreCompileInputs.cache
+D:\TESTS\Mms\runSharp\bin\x64\Debug\mms.exe.config
+D:\TESTS\Mms\runSharp\bin\x64\Debug\mms.exe
+D:\TESTS\Mms\runSharp\bin\x64\Debug\mms.pdb
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.exe
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.pdb
+D:\TESTS\Mms\runSharp\bin\x64\Debug\Newtonsoft.Json.dll
+D:\TESTS\Mms\runSharp\bin\x64\Debug\Newtonsoft.Json.xml
+D:\TESTS\Mms\runSharp\obj\x64\Debug\mms.run.csproj.CopyComplete
