@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Linq;
 
 namespace Mms
 {
@@ -44,181 +45,216 @@ namespace Mms
       }
     }
 
-    private async Task SendEMail(MsgMail msgMail, SmtpClient m_client, CancellationToken token)
+    private MailMessage CreateMail(MsgMail msgMail)
+    {
+      MailMessage message = new MailMessage(
+          msgMail.from,
+          msgMail.to
+          );
+
+      if (!string.IsNullOrEmpty(msgMail.content_path))
+      {
+        message.Body = File.ReadAllText(msgMail.content_path);
+
+        var sourceDirectory = Path.GetDirectoryName(msgMail.content_path);
+        var fileName = Path.GetFileName(msgMail.content_path);
+
+        var folder = msgMail.content_path.Replace(fileName, Path.GetFileNameWithoutExtension(fileName));
+        sourceDirectory = Path.Combine(sourceDirectory, $"{folder}_files");
+        var txtFiles = Directory.EnumerateFiles(sourceDirectory, "*.*", SearchOption.AllDirectories);
+
+        var filesDir = Path.GetFileName(sourceDirectory);
+        message.Body = message.Body.Replace($"{filesDir}/", "cid:");
+
+        foreach (string currentFile in txtFiles)
+        {
+          string fileName1 = currentFile.Substring(sourceDirectory.Length + 1);
+          msgMail.attachments += currentFile + ";";
+        }
+      }
+      else
+      {
+        message.Body = msgMail.body;
+      }
+
+
+      string s1 = msgMail.subject;
+      message.Subject = s1;
+
+      message.SubjectEncoding = System.Text.Encoding.UTF8;
+      message.HeadersEncoding = Encoding.UTF8;
+      message.BodyEncoding = Encoding.UTF8;
+
+      message.IsBodyHtml = msgMail.is_body_html;
+
+      if (!string.IsNullOrEmpty(msgMail.bcc))
+      {
+        message.Bcc.Add(msgMail.bcc);
+      }
+
+      if (!string.IsNullOrEmpty(msgMail.cc))
+      {
+        message.CC.Add(msgMail.cc);
+      }
+
+      // Create  the file attachment for this e-mail message.
+      if (!string.IsNullOrEmpty(msgMail.attachments))
+      {
+        string[] filenames = msgMail.attachments.ToLower().Split(';');
+        foreach (string filename in filenames)
+        {
+          if (string.IsNullOrEmpty(filename))
+          {
+            continue;
+          }
+
+          Attachment data = null;
+          string mimetype = MediaTypeNames.Application.Octet;
+
+          if (filename.Contains(".jpeg") || filename.Contains(".jpg"))
+          {
+            mimetype = MediaTypeNames.Image.Jpeg;
+          }
+          else if (filename.Contains(".bmp"))
+          {
+            mimetype = "image/bmp";
+          }
+          else if (filename.Contains(".png"))
+          {
+            mimetype = "image/png";
+          }
+          else if (filename.Contains(".thmx"))
+          {
+            mimetype = "application/vnd.ms-officetheme";
+          }
+          else if (filename.Contains(".xml"))
+          {
+            mimetype = MediaTypeNames.Text.Xml;
+          }
+
+
+          if (msgMail.pack)
+          {
+            FileStream sourceFileStream = File.OpenRead(filename);
+            using (FileStream destFileStream = File.Create(filename + ".gz"))
+            {
+
+
+              GZipStream compressingStream = new GZipStream(destFileStream,
+                  CompressionMode.Compress);
+
+              byte[] bytes = new byte[2048];
+              int bytesRead;
+
+              while ((bytesRead = sourceFileStream.Read(bytes, 0, bytes.Length)) != 0)
+              {
+                compressingStream.Write(bytes, 0, bytesRead);
+              }
+
+              sourceFileStream.Close();
+              compressingStream.Close();
+              destFileStream.Close();
+              data = new Attachment(destFileStream.Name, MediaTypeNames.Application.Zip);
+            }
+          }
+          else
+          {
+            using (FileStream fs = File.OpenRead(filename))
+            {
+              data = new Attachment(filename, mimetype);
+              if (message.IsBodyHtml)
+              {
+                string cid = Path.GetFileName(filename);
+                data.Name = cid;
+                data.ContentId = cid;
+              }
+              if (msgMail.inline)
+              {
+                data.ContentDisposition.Inline = true;
+              }
+            }
+          }
+          // Add time stamp information for the file.
+          ContentDisposition disposition = data.ContentDisposition;
+          disposition.CreationDate = System.IO.File.GetCreationTime(filename);
+          disposition.ModificationDate = System.IO.File.GetLastWriteTime(filename);
+          disposition.ReadDate = System.IO.File.GetLastAccessTime(filename);
+
+          message.Attachments.Add(data);
+        }
+      }
+      return message;
+    }
+
+    private async Task SendEMail(MailMessage message, SmtpClient m_client, CancellationToken token)
     {
       try
       {
         await Task.Delay(10, token);
 
         // Create a message and set up the recipients.
-        MailMessage message = new MailMessage(
-           msgMail.from,
-           msgMail.to
-           );
-
-        if (!string.IsNullOrEmpty(msgMail.content_path))
-        {
-          message.Body = File.ReadAllText(msgMail.content_path);
-          
-          var sourceDirectory = Path.GetDirectoryName(msgMail.content_path);
-          var fileName = Path.GetFileName(msgMail.content_path);
-
-          var folder = msgMail.content_path.Replace(fileName, Path.GetFileNameWithoutExtension(fileName));
-          sourceDirectory = Path.Combine(sourceDirectory, $"{folder}_files");
-          var txtFiles = Directory.EnumerateFiles(sourceDirectory, "*.*", SearchOption.AllDirectories);
-
-          var filesDir = Path.GetFileName(sourceDirectory);
-          message.Body = message.Body.Replace($"{filesDir}/", "cid:");
-
-          foreach (string currentFile in txtFiles)
-          {
-            string fileName1 = currentFile.Substring(sourceDirectory.Length + 1);
-            msgMail.attachments += currentFile + ";";
-          }
-        }
-        else
-        { 
-          message.Body = msgMail.body; 
-        }
-
-
-        string s1 = msgMail.subject;
-        message.Subject = s1;
-
-        message.SubjectEncoding = System.Text.Encoding.UTF8;
-        message.HeadersEncoding = Encoding.UTF8;
-        message.BodyEncoding = Encoding.UTF8;
-
-        message.IsBodyHtml = msgMail.is_body_html;
-
-        if (!string.IsNullOrEmpty(msgMail.bcc))
-        {
-          message.Bcc.Add(msgMail.bcc);
-        }
-
-        if (!string.IsNullOrEmpty(msgMail.cc))
-        {
-          message.CC.Add(msgMail.cc);
-        }
-
-        // Create  the file attachment for this e-mail message.
-        if (!string.IsNullOrEmpty(msgMail.attachments))
-        {
-          string[] filenames = msgMail.attachments.ToLower().Split(';');
-          foreach (string filename in filenames)
-          {
-            if (string.IsNullOrEmpty(filename))
-            {
-              continue;
-            }
-
-            Attachment data = null;
-            string mimetype = MediaTypeNames.Application.Octet;
-
-            if (filename.Contains(".jpeg") || filename.Contains(".jpg"))
-            {
-              mimetype = MediaTypeNames.Image.Jpeg;
-            }
-            else if (filename.Contains(".bmp"))
-            {
-              mimetype = "image/bmp";
-            }
-            else if (filename.Contains(".png"))
-            {
-              mimetype = "image/png";
-            }
-            else if (filename.Contains(".thmx"))
-            {
-              mimetype = "application/vnd.ms-officetheme";
-            }
-            else if (filename.Contains(".xml"))
-            {
-              mimetype = MediaTypeNames.Text.Xml;
-            }
-
-
-            if (msgMail.pack)
-            {
-              FileStream sourceFileStream = File.OpenRead(filename);
-              using (FileStream destFileStream = File.Create(filename + ".gz"))
-              {
-
-
-                GZipStream compressingStream = new GZipStream(destFileStream,
-                    CompressionMode.Compress);
-
-                byte[] bytes = new byte[2048];
-                int bytesRead;
-
-                while ((bytesRead = sourceFileStream.Read(bytes, 0, bytes.Length)) != 0)
-                {
-                  compressingStream.Write(bytes, 0, bytesRead);
-                }
-
-                sourceFileStream.Close();
-                compressingStream.Close();
-                destFileStream.Close();
-                data = new Attachment(destFileStream.Name, MediaTypeNames.Application.Zip);
-              }
-            }
-            else
-            {
-              using (FileStream fs = File.OpenRead(filename))
-              {
-                data = new Attachment(filename, mimetype);
-                if (message.IsBodyHtml)
-                {
-                  string cid = Path.GetFileName(filename);
-                  data.Name = cid;
-                  data.ContentId = cid;
-                }
-                if (msgMail.inline)
-                {
-                  data.ContentDisposition.Inline = true;
-                }
-              }
-            }
-            // Add time stamp information for the file.
-            ContentDisposition disposition = data.ContentDisposition;
-            disposition.CreationDate = System.IO.File.GetCreationTime(filename);
-            disposition.ModificationDate = System.IO.File.GetLastWriteTime(filename);
-            disposition.ReadDate = System.IO.File.GetLastAccessTime(filename);
-
-            message.Attachments.Add(data);
-          }
-
-        }
+       
 
         //Send the message.
 
         
         await m_client.SendMailAsync(message);
-        NotifyAboutSent(msgMail);
+        NotifyAboutSent(message);
       }
       catch (Exception ex)
       {
-        OnSendError(msgMail, ex);
+        OnSendError(message, ex);
       }
     }
 
-    private void OnSendError(MsgMail msgMail, Exception ex)
+    private void OnSendError(MailMessage msgMail, Exception ex)
     {
       this.BeginInvoke(new Action(() =>
       {
-        var item = listViewStat.Items.Add(msgMail.to);
-        item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "error"));
+        foreach(var addr in msgMail.To)
+        {
+          var item = listViewStat.Items.Insert(0, addr.Address);
+          item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "error"));
+        }        
       }      
       )) ;
     }
 
-    private void NotifyAboutSent(MsgMail msgMail)
+    private void NotifyAboutSent(MailMessage msgMail)
     {
       this.BeginInvoke(new Action(() =>
       {
-        var item = listViewStat.Items.Add(msgMail.to);
-        item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "OK"));
+        foreach (var addr in msgMail.To)
+        {
+          var item = listViewStat.Items.Insert(0, addr.Address);
+          item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "OK"));
+          AddLineToSent(addr.Address);
+        }
+        
       }
       ));
+    }
+
+    private void AddLineToSent(string line)
+    {
+      string path = m_content_path;
+      // This text is added only once to the file.
+      if (!File.Exists(path))
+      {
+        // Create a file to write to.
+        using (StreamWriter sw = File.CreateText(path))
+        {
+          sw.WriteLine(line);
+        }
+        return;
+      }
+
+      // This text is always added, making the file longer over time
+      // if it is not deleted.
+      using (StreamWriter sw = File.AppendText(path))
+      {
+        sw.WriteLine(line);
+      }
     }
     private void SendCompletedCallback(object sender, AsyncCompletedEventArgs e)
     {
@@ -288,6 +324,31 @@ namespace Mms
       Settings.Default.Save();
     }
 
+    string m_content_path = @"C:\\exclude.txt";
+
+    private SmtpClient CreateClient()
+    {
+      Mailer mailer = JsonConvert.DeserializeObject<Mailer>(textBoxMailer.Text);
+      var client = new SmtpClient(mailer.smtp, mailer.port);
+      client.SendCompleted += new SendCompletedEventHandler(SendCompletedCallback);
+      client.Host = mailer.smtp;
+      client.Port = mailer.port;
+      client.UseDefaultCredentials = false;
+      client.EnableSsl = mailer.tls;
+
+      // Add credentials if the SMTP server requires them.
+
+      string password = mailer.smtp_password;
+      client.Credentials = new NetworkCredential(mailer.smtp_username, password);
+
+      ServicePointManager.ServerCertificateValidationCallback =
+          delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+          {
+            return true;
+          };
+      return client;
+    }
+
     private async void buttonSend_Click(object sender, EventArgs e)
     {
       buttonSend.Enabled = false;
@@ -295,40 +356,56 @@ namespace Mms
       _cancellToken = new CancellationTokenSource();
       listViewStat.Items.Clear();
 
-      Mailer mailer = JsonConvert.DeserializeObject<Mailer>(textBoxMailer.Text);
+      
       MsgMail mail = JsonConvert.DeserializeObject<MsgMail>(textBoxMail.Text);
       
-      var m_client = new SmtpClient(mailer.smtp, mailer.port);
-      m_client.SendCompleted += new SendCompletedEventHandler(SendCompletedCallback);
-      m_client.Host = mailer.smtp;
-      m_client.Port = mailer.port;
-      m_client.UseDefaultCredentials = false;
-      m_client.EnableSsl = mailer.tls;
+      
 
-      // Add credentials if the SMTP server requires them.
 
-      string password = mailer.smtp_password;
-      m_client.Credentials = new NetworkCredential(mailer.smtp_username, password);
-
-      ServicePointManager.ServerCertificateValidationCallback =
-          delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-          {
-            return true;
-          };
+      m_content_path = Path.GetDirectoryName(mail.content_path);
+      m_content_path = Path.Combine(m_content_path, "exclude.txt");
 
       var addrs = GetAddressList(mail.content_path);
       var token = _cancellToken.Token;
 
-      await SendEMail (mail, m_client, token);
+      var mailPacket = CreateMail(mail);
 
-      foreach (var addr in addrs)
+      //await SendEMail (mailPacket, m_client, token);
+
+      while (addrs.Count > 0)
       {
-        if (_cancellToken.IsCancellationRequested)
+        var client = CreateClient();
+
+        for (int k = 0; k < 50; k++)
         {
-          break;
+          // 50 Letters
+          mailPacket.To.Clear();
+
+          for (int i = 0; i < 50; i++)
+          {
+            // By 50 addresses
+            var addr = addrs.FirstOrDefault();
+
+            if (string.IsNullOrEmpty(addr))
+            {
+              break;
+            }
+
+            addrs.RemoveAt(0);
+            mailPacket.To.Add(new MailAddress(addr));
+          }
+          
+          if (mailPacket.To.Count <= 0 || _cancellToken.IsCancellationRequested)
+          {
+            break;
+          }
+          
+          await SendEMail(mailPacket, client, token);
         }
-        mail.to = addr;
-        await SendEMail(mail, m_client, token);
+
+        // Wait 16 minutes
+        if (addrs.Count > 0)
+          await Task.Delay(1000 * 60 * 16, token);
       }
       buttonSend.Enabled = true;
     }
@@ -362,6 +439,17 @@ namespace Mms
           retList.Add(parts[0]);
         }
       }
+
+      try
+      {
+        var exclude = File.ReadAllLines(m_content_path);
+        retList = retList.Where(t => !exclude.Contains(t)).ToList();
+      }
+      catch(Exception ex)
+      {
+        
+      }
+      
 
       return retList;
     }
