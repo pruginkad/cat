@@ -16,13 +16,43 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
+using System.Collections;
 
 namespace Mms
 {
   public partial class Form1 : Form
   {
+    T[] GetMax<T>(int number, List<T> source, T minVal)
+    {
+      T[] results = new T[number];
+
+      for (int i = 0; i < number; i++)
+      {
+        results[i] = minVal;
+      }
+
+      var curMin = minVal;
+
+      foreach (var e in source)
+      {
+        int resComp = Comparer.DefaultInvariant.Compare(curMin, e);
+
+        if (resComp < 0)
+        {
+          int minIndex = Array.IndexOf(results, curMin);
+          results[minIndex] = e;
+          curMin = results.Min();
+        }
+      }
+
+      return results;
+    }
+
     public Form1()
     {
+      var source = new int[] { 5, 7, 3, 2, 4, 3 }.ToList();
+      GetMax(3, source, int.MinValue);
+
       InitializeComponent();
       m_DebugForm.Hide();
     }
@@ -61,7 +91,17 @@ namespace Mms
 
         var folder = msgMail.content_path.Replace(fileName, Path.GetFileNameWithoutExtension(fileName));
         sourceDirectory = Path.Combine(sourceDirectory, $"{folder}_files");
-        var txtFiles = Directory.EnumerateFiles(sourceDirectory, "*.*", SearchOption.AllDirectories);
+        List<string> txtFiles = new List<string>();
+
+        try
+        {
+          txtFiles = Directory.EnumerateFiles(
+            sourceDirectory, "*.*", SearchOption.AllDirectories
+            ).ToList();
+        }
+        catch(Exception ex)
+        { }
+        
 
         var filesDir = Path.GetFileName(sourceDirectory);
         message.Body = message.Body.Replace($"{filesDir}/", "cid:");
@@ -220,19 +260,26 @@ namespace Mms
       )) ;
     }
 
+    public delegate void MyDelegate(List<string> msgMail);
+    public void DelegateMethod(List<string> msgMail)
+    {
+      foreach (var addr in msgMail)
+      {
+        var item = listViewStat.Items.Insert(0, addr);
+        item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "OK"));
+        AddLineToSent(addr);
+      }
+    }
     private void NotifyAboutSent(MailMessage msgMail)
     {
-      this.BeginInvoke(new Action(() =>
+      List<string> addrs = new List<string>();
+      foreach (var addr in msgMail.To)
       {
-        foreach (var addr in msgMail.To)
-        {
-          var item = listViewStat.Items.Insert(0, addr.Address);
-          item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "OK"));
-          AddLineToSent(addr.Address);
-        }
-        
+        addrs.Add(addr.Address);
       }
-      ));
+      object[] myArray = new object[1];
+      myArray[0] = addrs;
+      this.BeginInvoke(new MyDelegate(DelegateMethod), myArray);
     }
 
     private void AddLineToSent(string line)
@@ -435,7 +482,7 @@ namespace Mms
           {
             continue;
           }
-
+          parts[0] = parts[0].Replace(" ", string.Empty);
           retList.Add(parts[0]);
         }
       }
@@ -449,7 +496,8 @@ namespace Mms
       {
         
       }
-      
+
+      retList = retList.OrderBy(email => email.Split('@')[1]).ToList();
 
       return retList;
     }
