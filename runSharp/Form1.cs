@@ -230,14 +230,9 @@ namespace Mms
     {
       try
       {
-        await Task.Delay(10, token);
+        await Task.Delay(10, token);  
 
-        // Create a message and set up the recipients.
-       
-
-        //Send the message.
-
-        
+        //Send the message.        
         await m_client.SendMailAsync(message);
         NotifyAboutSent(message);
       }
@@ -251,11 +246,17 @@ namespace Mms
     {
       this.BeginInvoke(new Action(() =>
       {
-        foreach(var addr in msgMail.To)
+        foreach(var addr in msgMail.Bcc)
         {
           var item = listViewStat.Items.Insert(0, addr.Address);
           item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "error"));
-        }        
+        }
+
+        foreach (var addr in msgMail.To)
+        {
+          var item = listViewStat.Items.Insert(0, addr.Address);
+          item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "error"));
+        }
       }      
       )) ;
     }
@@ -267,24 +268,30 @@ namespace Mms
       {
         var item = listViewStat.Items.Insert(0, addr);
         item.SubItems.Add(new ListViewItem.ListViewSubItem(item, "OK"));
-        AddLineToSent(addr);
+        AddLineToFile(addr, m_content_path);
       }
     }
     private void NotifyAboutSent(MailMessage msgMail)
     {
       List<string> addrs = new List<string>();
+
+      foreach (var addr in msgMail.Bcc)
+      {
+        addrs.Add(addr.Address);
+      }
+
       foreach (var addr in msgMail.To)
       {
         addrs.Add(addr.Address);
       }
+
       object[] myArray = new object[1];
       myArray[0] = addrs;
       this.BeginInvoke(new MyDelegate(DelegateMethod), myArray);
     }
 
-    private void AddLineToSent(string line)
+    private void AddLineToFile(string line, string path)
     {
-      string path = m_content_path;
       // This text is added only once to the file.
       if (!File.Exists(path))
       {
@@ -405,14 +412,25 @@ namespace Mms
 
       
       MsgMail mail = JsonConvert.DeserializeObject<MsgMail>(textBoxMail.Text);
-      
-      
-
 
       m_content_path = Path.GetDirectoryName(mail.content_path);
       m_content_path = Path.Combine(m_content_path, "exclude.txt");
 
       var addrs = GetAddressList(mail.content_path);
+
+      {
+        // Save sorted.
+        var content_path = Path.GetDirectoryName(mail.content_path);
+        content_path = Path.Combine(content_path, "sorted.txt");
+        File.Delete(content_path);
+
+        foreach (var addr in addrs)
+        {
+          AddLineToFile(addr, content_path);
+        }
+      }
+      
+
       var token = _cancellToken.Token;
 
       var mailPacket = CreateMail(mail);
@@ -426,28 +444,41 @@ namespace Mms
         for (int k = 0; k < 50; k++)
         {
           // 50 Letters
-          mailPacket.To.Clear();
+          mailPacket.Bcc.Clear();
 
-          for (int i = 0; i < 50; i++)
+          for (int i = 0; i < 49; i++)
           {
             // By 50 addresses
-            var addr = addrs.FirstOrDefault();
+            var addr = addrs.FirstOrDefault();            
 
             if (string.IsNullOrEmpty(addr))
             {
               break;
+            }           
+
+            if (addr.Contains("icloud"))
+            {
+              if (mailPacket.Bcc.Count == 0)
+              {
+                mailPacket.To.Clear();
+                mailPacket.To.Add(new MailAddress(addr));
+              }
+              break;
+            }
+            else
+            {
+              mailPacket.Bcc.Add(new MailAddress(addr));
             }
 
             addrs.RemoveAt(0);
-            mailPacket.To.Add(new MailAddress(addr));
           }
-          
-          if (mailPacket.To.Count <= 0 || _cancellToken.IsCancellationRequested)
+
+          await SendEMail(mailPacket, client, token);
+
+          if (addrs.Count <= 0 || _cancellToken.IsCancellationRequested)
           {
             break;
           }
-          
-          await SendEMail(mailPacket, client, token);
         }
 
         // Wait 16 minutes
@@ -465,10 +496,10 @@ namespace Mms
 
       var txtFiles = Directory.EnumerateFiles(sourceDirectory, "*.csv", SearchOption.AllDirectories);
 
-
       foreach (string currentFile in txtFiles)
       {
         var lines = File.ReadAllLines(currentFile);
+
         foreach(var line in lines)
         {
           var clean_line = line.Replace("\"", string.Empty);
@@ -482,6 +513,7 @@ namespace Mms
           {
             continue;
           }
+
           parts[0] = parts[0].Replace(" ", string.Empty);
           retList.Add(parts[0]);
         }
@@ -490,7 +522,7 @@ namespace Mms
       try
       {
         var exclude = File.ReadAllLines(m_content_path);
-        retList = retList.Where(t => !exclude.Contains(t)).ToList();
+        retList = retList.Where(t => !exclude.Contains(t)).Distinct().ToList();
       }
       catch(Exception ex)
       {
@@ -498,7 +530,6 @@ namespace Mms
       }
 
       retList = retList.OrderBy(email => email.Split('@')[1]).ToList();
-
       return retList;
     }
 
